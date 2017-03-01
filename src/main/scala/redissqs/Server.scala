@@ -22,7 +22,7 @@ class Server extends HttpServer {
   val serviceVersion = flag[String]("service.version", "NA", "the version of service")
 
   override def defaultFinatraHttpPort = getConfig[String]("FINATRA_HTTP_PORT").fold(":9999")(x => s":$x")
-  override val name                   = "redissqs RedisSqsSample"
+  override val name                   = "redissqs RedisSimpleQueue"
 
   override val modules       = Seq(RedisModule)
   override def jacksonModule = CustomJacksonModule
@@ -48,9 +48,10 @@ class Server extends HttpServer {
 
     val info = new Info()
       .contact(new Contact().name("Jack Chung").email("Jack_Chung@htc.com"))
-      .description("**Redis SQS Sample** - A Queue Service that serve as a SQS service with Redis database.")
+      .description(
+        "**Redis Simple Queue Service** - A Queue Service that serve as a simple queue service with Redis database.")
       .version(serviceVersion())
-      .title("Redis SQS Sample API")
+      .title("Redis Simple Queue Service")
 
     ProjectSwagger.info(info)
     handle[SchedulerHandler]()

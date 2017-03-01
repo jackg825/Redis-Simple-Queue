@@ -12,6 +12,7 @@ import com.twitter.util.Future
 import redissqs.domains.http.{ReceiveMessageRequest, ReceiveMessageResponse}
 import redissqs.utils.PipeOperator._
 import redissqs.utils.Implicits._
+import redissqs.utils.Prefixs._
 
 @Singleton
 class ReceiveMessageService @Inject()(redis: RedisClient)
@@ -21,8 +22,10 @@ class ReceiveMessageService @Inject()(redis: RedisClient)
   override def apply(req: ReceiveMessageRequest): Future[Maybe[ReceiveMessageResponse]] = {
     val mapper = new ObjectMapper()
     (for {
-      p    <- redis.lPop(key = ("queue_" + req.name).toBuf)
-      _    <- redis.zAdd(key = ("invisible_" + req.name).toBuf, score = System.currentTimeMillis().toDouble, member = p.get)
+      p <- redis.lPop(key = (QUEUE_PREFIX + req.name).toBuf)
+      _ <- redis.zAdd(key = (INVISIBLE_PREFIX + req.name).toBuf,
+                      score = System.currentTimeMillis().toDouble,
+                      member = p.get)
       b    <- p.get.deBuf.|>(Future(_))
       json <- mapper.readTree(b.get).|>(Future(_))
     } yield {

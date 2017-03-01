@@ -10,8 +10,8 @@ import redissqs.services.{DeleteMessageService, ReceiveMessageService, SendMessa
 import redissqs.swagger.ProjectSwagger
 
 @Singleton
-class MainController @Inject()(SendMsgSrv: SendMessageService,
-                               ReceiveMsgSrv: ReceiveMessageService,
+class MainController @Inject()(sendMsgSrv: SendMessageService,
+                               receiveMsgSrv: ReceiveMessageService,
                                deleteMsgSrv: DeleteMessageService)
     extends Controller
     with SwaggerSupport {
@@ -35,11 +35,12 @@ class MainController @Inject()(SendMsgSrv: SendMessageService,
       .responseWith[Errors](400, "Bad Request - a problem reading or understanding the request.")
       .responseWith[Errors](500, "Internal Server Error - the server could not process the request.")
   } { request: ReceiveMessageRequest =>
-    ReceiveMsgSrv(request).map {
+    receiveMsgSrv(request).map {
       case OK(r) => response.ok.json(r)
       case KO(_) => response.internalServerError
     }
   }
+
   deleteWithDoc("/msg") { o =>
     o.summary("")
       .description("""
@@ -67,7 +68,10 @@ class MainController @Inject()(SendMsgSrv: SendMessageService,
       .responseWith[Errors](400, "Bad Request - a problem reading or understanding the request.")
       .responseWith[Errors](500, "Internal Server Error - the server could not process the request.")
   } { request: DeleteMessageRequest =>
-    response.ok.json(DeleteMessageResponse(name = request.name, value = request.value))
+    deleteMsgSrv(request).map {
+      case OK(r) => response.ok.json(r)
+      case KO(_) => response.internalServerError
+    }
   }
 
   postWithDoc("/msg") { o =>
@@ -97,7 +101,7 @@ class MainController @Inject()(SendMsgSrv: SendMessageService,
       .responseWith(400, "Bad Request - a problem reading or understanding the request.")
       .responseWith(500, "Internal Server Error - the server could not process the request.")
   } { request: SendMessageRequest =>
-    SendMsgSrv(request).map {
+    sendMsgSrv(request).map {
       case OK(r) =>
         response.ok.json(r)
       case KO(_) =>
