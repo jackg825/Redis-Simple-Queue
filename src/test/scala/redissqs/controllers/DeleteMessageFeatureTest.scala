@@ -27,9 +27,9 @@ class DeleteMessageFeatureTest extends FeatureTest with RedisDockerTestKit {
 
   override val server = new EmbeddedHttpServer(twitterServer = new Server, stage = Stage.DEVELOPMENT)
 
-  test("Succeed(200) when delete invisible message from redis queue success") {pending}
-  test("Fail(204) when delete message from redis queue empty or not found") {pending}
-  test("Fail(400) when required field is not provided") {pending}
-  test("Fail(400) when required value field is not valid JSON format") {pending}
-  test("Fail(500) when redis is not available") {pending}
+  test("Succeed(200) when delete invisible message from redis queue success") { pending }
+  test("Fail(204) when delete message from redis queue empty or not found") { pending }
+  test("Fail(400) when required field is not provided") { pending }
+  test("Fail(400) when required value field is not valid JSON format") { pending }
+  test("Fail(500) when redis is not available") { pending }
 }

@@ -18,11 +18,17 @@ class MainController @Inject()(sendMsgSrv: SendMessageService,
 
   implicit protected val swagger = ProjectSwagger
 
-  getWithDoc("/msg") { o =>
-    o.summary("")
+  postWithDoc("/priv/redissqs/v1/msg/get") { o =>
+    o.summary("get(POP) the message from simple queue")
       .description("""
                      |
                      | __Request description__
+                     |
+                     | ```
+                     | {
+                     |  "name": "queue"
+                     | }
+                     | ```
                      |
                      | | Name  | Type     | Example         | Required | Description                               |
                      | |-------|----------|-----------------|----------|-------------------------------------------|
@@ -30,7 +36,7 @@ class MainController @Inject()(sendMsgSrv: SendMessageService,
                      |
         """.stripMargin)
       .tag("Simple Queue")
-      .queryParam[String](name = "name", description = "queryParam", required = true)
+      .bodyParam[ReceiveMessageRequest](name = "name", description = "The name of the queue")
       .responseWith[ReceiveMessageResponse](200, "OK - the request has succeeded.")
       .responseWith[Errors](400, "Bad Request - a problem reading or understanding the request.")
       .responseWith[Errors](500, "Internal Server Error - the server could not process the request.")
@@ -41,15 +47,15 @@ class MainController @Inject()(sendMsgSrv: SendMessageService,
     }
   }
 
-  deleteWithDoc("/msg") { o =>
-    o.summary("")
+  deleteWithDoc("/msg/delete") { o =>
+    o.summary("delete the invisible message which has been get(POP) from simple queue")
       .description("""
                      |
                      | __Request description__
                      |
                      | ```
                      | {
-                     |  "name": "",
+                     |  "name": "queue",
                      |  "value": {
                      |    ...
                      |  }
@@ -74,15 +80,15 @@ class MainController @Inject()(sendMsgSrv: SendMessageService,
     }
   }
 
-  postWithDoc("/msg") { o =>
-    o.summary("")
+  postWithDoc("/priv/redissqs/v1/msg/insert") { o =>
+    o.summary("insert(PUSH) the message from simple queue")
       .description("""
                      |
                      | __Request description__
                      |
                      | ```
                      | {
-                     |  "name": "",
+                     |  "name": "queue",
                      |  "value": {
                      |    ...
                      |  }

@@ -6,11 +6,9 @@ import com.twitter.inject.server.FeatureTest
 
 class StartupTest extends FeatureTest {
 
-  val server = new EmbeddedHttpServer(
-    stage = Stage.PRODUCTION,
-    twitterServer = new Server)
+  val server = new EmbeddedHttpServer(stage = Stage.PRODUCTION, twitterServer = new Server)
 
-  "server" in {
+  test("server") {
     server.assertHealthy()
   }
 }
