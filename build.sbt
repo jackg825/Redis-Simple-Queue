@@ -2,7 +2,7 @@ import sbt.Keys._
 import com.typesafe.sbt.packager.docker._
 import org.scalafmt.sbt.ScalaFmtPlugin
 
-name := "Redis SQS Sample"
+name := "Redis Simple Queue"
 
 organization := "com.htc.vr82"
 
