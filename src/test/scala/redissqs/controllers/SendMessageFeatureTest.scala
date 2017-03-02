@@ -4,9 +4,7 @@ import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import com.google.inject.Stage
 import com.twitter.finagle.redis.{Client => RedisClient}
 import com.twitter.finagle.http.Status
-import com.twitter.finatra.annotations.CamelCaseMapper
 import com.twitter.finatra.http.EmbeddedHttpServer
-import com.twitter.finatra.json.FinatraObjectMapper
 import com.twitter.inject.server.FeatureTest
 import com.twitter.util.Future
 import redissqs.Server
@@ -38,7 +36,7 @@ class SendMessageFeatureTest extends FeatureTest with RedisDockerTestKit {
 
   override val server = new EmbeddedHttpServer(twitterServer = new Server, stage = Stage.DEVELOPMENT)
 
-  lazy private val mapper = server.injector.instance[FinatraObjectMapper, CamelCaseMapper]
+  lazy private val mapper = server.injector.instance[ObjectMapper]
 
   test("Succeed(200) when insert message to redis queue success") {
     val request =
@@ -63,21 +61,76 @@ class SendMessageFeatureTest extends FeatureTest with RedisDockerTestKit {
                     postBody = request,
                     andExpect = Status.Ok,
                     withJsonBody = response)
-    val jsonNode = s"""{"v":"$QUEUE_VALUE"}"""
-    getFromRedis(QUEUE_NAME).|>(mapper.writeValueAsString(_)) should be(jsonNode)
+    val jsonNode = mapper.readTree(s"""{"v":"$QUEUE_VALUE"}""")
+    getFromRedis(QUEUE_NAME) should be(jsonNode)
+    flushRedisDatabase()
   }
-  test("Fail(400) when required field is not provide") { pending }
-  test("Fail(400) when required field value is not valid JSON format") { pending }
-  test("Fail(500) when redis is not available") { pending }
+  test("Fail(400) when required field is not provide") {
+    val request =
+      s"""
+         |{
+         | "abc": "$QUEUE_VALUE"
+         |}
+      """.stripMargin
+    val errmsg = Seq("name: field is required", "value: field is required")
+    server.httpPost(path = "/priv/redissqs/v1/msg/insert",
+                    postBody = request,
+                    andExpect = Status.BadRequest,
+                    withErrors = errmsg)
+    getRedisQueueLength(QUEUE_NAME) should be(0)
+    flushRedisDatabase()
+  }
+  test("Fail(400) when required field value is not valid JSON format") {
+    val request =
+      s"""
+         |{
+         | "name": "$QUEUE_NAME",
+         | "value": {
+         |   "v" = "$QUEUE_VALUE"
+         | }
+         |}
+      """.stripMargin
+    val errmsg = Seq("Unexpected character ('=' (code 61)): was expecting a colon to separate field name and value")
+    server.httpPost(path = "/priv/redissqs/v1/msg/insert",
+                    postBody = request,
+                    andExpect = Status.BadRequest,
+                    withErrors = errmsg)
+    getRedisQueueLength(QUEUE_NAME) should be(0)
+    flushRedisDatabase()
+  }
+  test("Fail(500) when redis is not available") {
+    stopAllQuietly()
+    val request =
+      s"""
+         |{
+         | "name": "$QUEUE_NAME",
+         | "value": {
+         |   "v": "$QUEUE_VALUE"
+         | }
+         |}
+      """.stripMargin
+    val errmsg = Seq("internal server error")
+    server.httpPost(path = "/priv/redissqs/v1/msg/insert",
+                    postBody = request,
+                    andExpect = Status.InternalServerError,
+                    withErrors = errmsg)
+  }
 
   val getFromRedis: String => JsonNode = { name =>
     val client = server.injector.instance[RedisClient]
-    val mapper = new ObjectMapper()
     (for {
       buf  <- client.lPop((QUEUE_PREFIX + name).toBuf)
       json <- mapper.readTree(buf.get.deBuf.get).|>(Future(_))
-    } yield {
-      json
-    }).toFutureValue
+    } yield json).toFutureValue
+  }
+
+  val getRedisQueueLength: String => Long = { name =>
+    val client = server.injector.instance[RedisClient]
+    client.lLen((QUEUE_PREFIX + name).toBuf).toFutureValue
+  }
+
+  val flushRedisDatabase: () => Unit = { () =>
+    val client = server.injector.instance[RedisClient]
+    client.flushDB().toFutureValue
   }
 }

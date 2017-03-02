@@ -5,6 +5,7 @@ import io.github.hamsters.Validation._
 import com.github.mehmetakiftutuncu.errors.Errors
 import com.github.xiaodongw.swagger.finatra.SwaggerSupport
 import com.twitter.finatra.http.Controller
+import redissqs.domains.errors.ServiceErrors._
 import redissqs.domains.http._
 import redissqs.services.{DeleteMessageService, ReceiveMessageService, SendMessageService}
 import redissqs.swagger.ProjectSwagger
@@ -34,6 +35,22 @@ class MainController @Inject()(sendMsgSrv: SendMessageService,
                      | |-------|----------|-----------------|----------|-------------------------------------------|
                      | | name  | String   | queue           | true     | The name of the queue                     |
                      |
+                     | __Response description__
+                     |
+                     | ```
+                     | {
+                     |  "name": "queue",
+                     |  "value": {
+                     |    ...
+                     |  }
+                     | }
+                     | ```
+                     |
+                     | | Name  | Type     | Example         | Required | Description                               |
+                     | |-------|----------|-----------------|----------|-------------------------------------------|
+                     | | name  | String   | queue           | true     | The name of the queue                     |
+                     | | value | JsonNode | JsonNode Object | true     | The data wish to store by JsonNode format |
+                     |
         """.stripMargin)
       .tag("Simple Queue")
       .bodyParam[ReceiveMessageRequest](name = "name", description = "The name of the queue")
@@ -42,16 +59,34 @@ class MainController @Inject()(sendMsgSrv: SendMessageService,
       .responseWith[Errors](500, "Internal Server Error - the server could not process the request.")
   } { request: ReceiveMessageRequest =>
     receiveMsgSrv(request).map {
-      case OK(r) => response.ok.json(r)
-      case KO(_) => response.internalServerError
+      case OK(r)                      => response.ok.json(r)
+      case KO(_: NotFoundError)       => response.noContent
+      case KO(l: InternalServerError) => response.internalServerError.json(l.represent(includeWhen = false))
+      case KO(_)                      => response.internalServerError
     }
   }
 
-  deleteWithDoc("/msg/delete") { o =>
+  postWithDoc("/priv/redissqs/v1/msg/delete") { o =>
     o.summary("delete the invisible message which has been get(POP) from simple queue")
       .description("""
                      |
                      | __Request description__
+                     |
+                     | ```
+                     | {
+                     |  "name": "queue",
+                     |  "value": {
+                     |    ...
+                     |  }
+                     | }
+                     | ```
+                     |
+                     | | Name  | Type     | Example         | Required | Description                               |
+                     | |-------|----------|-----------------|----------|-------------------------------------------|
+                     | | name  | String   | queue           | true     | The name of the queue                     |
+                     | | value | JsonNode | JsonNode Object | true     | The data wish to store by JsonNode format |
+                     |
+                     | __Response description__
                      |
                      | ```
                      | {
@@ -75,8 +110,10 @@ class MainController @Inject()(sendMsgSrv: SendMessageService,
       .responseWith[Errors](500, "Internal Server Error - the server could not process the request.")
   } { request: DeleteMessageRequest =>
     deleteMsgSrv(request).map {
-      case OK(r) => response.ok.json(r)
-      case KO(_) => response.internalServerError
+      case OK(r)                      => response.ok.json(r)
+      case KO(_: NotFoundError)       => response.noContent
+      case KO(l: InternalServerError) => response.internalServerError.json(l.represent(includeWhen = false))
+      case KO(_)                      => response.internalServerError
     }
   }
 
@@ -85,6 +122,22 @@ class MainController @Inject()(sendMsgSrv: SendMessageService,
       .description("""
                      |
                      | __Request description__
+                     |
+                     | ```
+                     | {
+                     |  "name": "queue",
+                     |  "value": {
+                     |    ...
+                     |  }
+                     | }
+                     | ```
+                     |
+                     | | Name  | Type     | Example         | Required | Description                               |
+                     | |-------|----------|-----------------|----------|-------------------------------------------|
+                     | | name  | String   | queue           | true     | The name of the queue                     |
+                     | | value | JsonNode | JsonNode Object | true     | The data wish to store by JsonNode format |
+                     |
+                     | __Response description__
                      |
                      | ```
                      | {

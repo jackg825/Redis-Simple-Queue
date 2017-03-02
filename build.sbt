@@ -14,6 +14,9 @@ scalaOrganization := "org.typelevel"
 
 fork in run := true
 
+fork in Test := false
+parallelExecution in Test := false
+
 resolvers += Resolver.sonatypeRepo("releases")
 
 resolvers += "maven.twttr.com" at "https://maven.twttr.com"

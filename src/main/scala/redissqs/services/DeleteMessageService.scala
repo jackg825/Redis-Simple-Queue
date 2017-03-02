@@ -10,7 +10,7 @@ import com.twitter.finatra.annotations.CamelCaseMapper
 import com.twitter.finatra.json.FinatraObjectMapper
 import com.twitter.inject.Logging
 import com.twitter.util.Future
-import io.github.hamsters.twitter.FutureEither
+import io.github.hamsters.twitter.{FutureEither => EitherT}
 import redissqs.domains.errors.ServiceErrors
 import redissqs.domains.http.{DeleteMessageRequest, DeleteMessageResponse}
 import redissqs.utils.Implicits._
@@ -25,9 +25,9 @@ class DeleteMessageService @Inject()(redis: RedisClient, @CamelCaseMapper mapper
 
   override def apply(request: DeleteMessageRequest): Future[Maybe[DeleteMessageResponse]] = {
     (for {
-      result   <- FutureEither(removeZsetMember(request))
-      _        <- FutureEither(removeRegisteredNameIfEmpty(request))
-      response <- FutureEither(provideDeleteMessageResponse(result))
+      result   <- EitherT(removeZsetMember(request))
+      _        <- EitherT(removeRegisteredNameIfEmpty(request))
+      response <- EitherT(provideDeleteMessageResponse(result))
     } yield {
       response
     }).future
@@ -48,8 +48,9 @@ class DeleteMessageService @Inject()(redis: RedisClient, @CamelCaseMapper mapper
       queue <- redis.zCard(key = (INVISIBLE_PREFIX + req.name).toBuf)
       zset  <- redis.lLen(key = (QUEUE_PREFIX + req.name).toBuf)
     } yield {
-      if (queue + zset == 0)
+      if (queue.+(zset) == 0) {
         redis.sRem(key = REGISTER_QUEUE.toBuf, members = List(req.name.toBuf))
+      }
       req.|>(OK(_))
     }
   }
